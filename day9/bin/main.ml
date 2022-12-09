@@ -1,14 +1,16 @@
 type coord = { x : int; y : int }
 
-module Forest = Map.Make (struct
+module Board = Map.Make (struct
   type t = coord
 
   let compare = compare
 end)
 
-let forest =
+let origin = { x = 0; y = 0 }
+
+let play worm =
   let ic = open_in "input" in
-  let rec loop input worm forest =
+  let rec loop input worm board =
     try
       let line = input_line input in
       let cmd = String.split_on_char ' ' line in
@@ -21,59 +23,47 @@ let forest =
         | _ -> assert false
       in
       let num = int_of_string (List.hd (List.tl cmd)) in
-      let () = Printf.printf "%i\n" num in
-      let new_forest, new_worm =
-        let move h t f =
-          let new_head = { x = h.x + dir.x; y = h.y + dir.y } in
-          let dx = new_head.x - t.x in
-          let dy = new_head.y - t.y in
-          let unit_size x =
-            if x = 0 then 0 else if x > 0 then x / x else x / Int.abs x
-          in
-          let drag =
-            if Int.abs dx > 1 || Int.abs dy > 1 then
-              { x = unit_size dx; y = unit_size dy }
-            else { x = 0; y = 0 }
-          in
-          let new_tail = { x = t.x + drag.x; y = t.y + drag.y } in
-          let tmp = Forest.add new_tail 1 f in
-          (tmp, new_head, new_tail)
-        in
-        let rec process w f =
+      let new_board, new_worm =
+        let rec process w vec b =
           match w with
           | hd :: nx :: tl ->
-              let f, updated_hd, updated_nx = move hd nx f in
-              let f, wrm = process (updated_nx :: tl) f in
-              (f, updated_hd :: wrm)
-          | hd :: [] -> (f, [ hd ])
-          | [] -> (f, [])
+              let new_hd = { x = hd.x + vec.x; y = hd.y + vec.y } in
+              let dx = new_hd.x - nx.x in
+              let dy = new_hd.y - nx.y in
+              let unit_size x =
+                if x = 0 then 0 else if x > 0 then x / x else x / Int.abs x
+              in
+              let drag =
+                if Int.abs dx > 1 || Int.abs dy > 1 then
+                  { x = unit_size dx; y = unit_size dy }
+                else { x = 0; y = 0 }
+              in
+              let new_nx = { x = nx.x + drag.x; y = nx.y + drag.y } in
+              let tmp =
+                if List.length tl = 0 then Board.add new_nx 1 b else b
+              in
+              let tmp2, wrm = process (new_nx :: tl) origin tmp in
+              (tmp2, new_hd :: wrm)
+          | hd :: [] -> (b, [ hd ])
+          | [] -> (b, [])
         in
-        let rec step n w f =
-          let f, w = process w f in
-          if n > 1 then step (n - 1) w f else (f, w)
+        let rec step n w b =
+          let b, w = process w dir b in
+          if n > 1 then step (n - 1) w b else (b, w)
         in
-        step num worm forest
+        step num worm board
       in
-      loop input new_worm new_forest
+      loop input new_worm new_board
     with End_of_file ->
       close_in input;
-      forest
+      board
   in
-  let origin = { x = 0; y = 0 } in
-  let worm = [ origin; origin ] in
-  loop ic worm (Forest.add origin 0 Forest.empty)
+  loop ic worm (Board.add origin 0 Board.empty)
 
-let n = Forest.fold (fun _ v i -> if v > 0 then i + 1 else i) forest 0
-let () = Printf.printf "Positions visited %i\n" n
-
-let _ =
-  for y = 0 to 5 do
-    let () =
-      for x = 0 to 5 do
-        if Forest.mem { x; y } forest then
-          Printf.printf "%i" (Forest.find { x; y } forest)
-        else Printf.printf " "
-      done
-    in
-    Printf.printf "\n"
-  done
+let () =
+  List.iter
+    (fun size ->
+      let game = play (List.init size (fun _ -> origin)) in
+      let n = Board.fold (fun _ v i -> if v > 0 then i + 1 else i) game 0 in
+      Printf.printf "Positions visited at length %i: %i\n" size n)
+    [ 2; 10 ]
