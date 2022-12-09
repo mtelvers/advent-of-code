@@ -8,7 +8,7 @@ end)
 
 let forest =
   let ic = open_in "input" in
-  let rec loop input head tail forest =
+  let rec loop input worm forest =
     try
       let line = input_line input in
       let cmd = String.split_on_char ' ' line in
@@ -21,8 +21,9 @@ let forest =
         | _ -> assert false
       in
       let num = int_of_string (List.hd (List.tl cmd)) in
-      let new_forest, new_head, new_tail =
-        let rec move h t sq f =
+      let () = Printf.printf "%i\n" num in
+      let new_forest, new_worm =
+        let move h t f =
           let new_head = { x = h.x + dir.x; y = h.y + dir.y } in
           let dx = new_head.x - t.x in
           let dy = new_head.y - t.y in
@@ -35,19 +36,32 @@ let forest =
             else { x = 0; y = 0 }
           in
           let new_tail = { x = t.x + drag.x; y = t.y + drag.y } in
-          let tmp = Forest.add new_tail sq f in
-          if sq > 1 then move new_head new_tail (sq - 1) tmp
-          else (tmp, new_head, new_tail)
+          let tmp = Forest.add new_tail 1 f in
+          (tmp, new_head, new_tail)
         in
-        move head tail num forest
+        let rec process w f =
+          match w with
+          | hd :: nx :: tl ->
+              let f, updated_hd, updated_nx = move hd nx f in
+              let f, wrm = process (updated_nx :: tl) f in
+              (f, updated_hd :: wrm)
+          | hd :: [] -> (f, [ hd ])
+          | [] -> (f, [])
+        in
+        let rec step n w f =
+          let f, w = process w f in
+          if n > 1 then step (n - 1) w f else (f, w)
+        in
+        step num worm forest
       in
-      loop input new_head new_tail new_forest
+      loop input new_worm new_forest
     with End_of_file ->
       close_in input;
       forest
   in
   let origin = { x = 0; y = 0 } in
-  loop ic origin origin (Forest.add origin 0 Forest.empty)
+  let worm = [ origin; origin ] in
+  loop ic worm (Forest.add origin 0 Forest.empty)
 
 let n = Forest.fold (fun _ v i -> if v > 0 then i + 1 else i) forest 0
 let () = Printf.printf "Positions visited %i\n" n
