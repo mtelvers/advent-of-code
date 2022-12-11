@@ -11,7 +11,7 @@ type monkey = {
 
 module Troop = Map.Make (Int)
 
-let load =
+let troop =
   let empty =
     { items = []; op = `Add; x = 0; test = 0; if_true = 0; if_false = 0 }
   in
@@ -102,6 +102,26 @@ let load =
   in
   loop ic Troop.empty 0 empty
 
+let troop2 =
+  Troop.mapi
+    (fun _ mkey ->
+      let () =
+        List.iter
+          (fun item ->
+            let worry =
+              (match mkey.op with
+              | `Add -> item + mkey.x
+              | `Multiply -> item * mkey.x
+              | `Square -> item * item)
+              / 3
+            in
+            let target = if worry mod mkey.test = 0 then mkey.if_true else mkey.if_false in
+            Printf.printf "worry %i therefore target %i\n" worry target)
+          mkey.items
+      in
+      mkey)
+    troop
+
 let _ =
   Troop.fold
     (fun k v i ->
@@ -112,4 +132,4 @@ let _ =
       let () = List.iter (Printf.printf "%i, ") v.items in
       let () = Printf.printf "\n" in
       i)
-    load 0
+    troop2 0
