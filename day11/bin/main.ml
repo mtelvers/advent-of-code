@@ -1,27 +1,34 @@
+open Big_int_Z
+
 type operation = [ `Add | `Multiply | `Square ]
 
 type monkey = {
-  items : int list;
+  items : big_int list;
   op : operation;
-  x : int;
-  test : int;
+  x : big_int;
+  test : big_int;
   if_true : int;
   if_false : int;
   inspections : int;
 }
 
 let empty =
-  { items = []; op = `Add; x = 0; test = 0; if_true = 0; if_false = 0; inspections = 0 }
+  {
+    items = [];
+    op = `Add;
+    x = zero_big_int;
+    test = zero_big_int;
+    if_true = 0;
+    if_false = 0;
+    inspections = 0;
+  }
 
-let troop = Array.make 8 empty
-
-let () =
+let catalog troop =
   let ic = open_in "input" in
   let rec loop input m tmp =
     try
       let line = input_line input in
       let tokens = String.split_on_char ' ' line in
-      let () = Printf.printf "tokens %i\n" (List.length tokens) in
       if List.length tokens < 2 then
         let () = Array.set troop m tmp in
         loop input (m + 1) empty
@@ -34,7 +41,7 @@ let () =
                   items =
                     List.map
                       (fun str ->
-                        int_of_string
+                        big_int_of_string
                           (String.trim
                              (String.map
                                 (fun c -> if c = ',' then ' ' else c)
@@ -49,7 +56,7 @@ let () =
                 }
           | "Operation:" :: tl ->
               let num =
-                try int_of_string (List.hd (List.rev tl)) with Failure _ -> 0
+                try big_int_of_string (List.hd (List.rev tl)) with Failure _ -> zero_big_int | Invalid_argument _ -> zero_big_int
               in
               process tl
                 {
@@ -70,7 +77,7 @@ let () =
                   items = record.items;
                   op = record.op;
                   x = record.x;
-                  test = int_of_string (List.hd (List.rev tl));
+                  test = big_int_of_string (List.hd (List.rev tl));
                   if_true = record.if_true;
                   if_false = record.if_false;
                   inspections = record.inspections;
@@ -97,8 +104,7 @@ let () =
                   if_false = int_of_string (List.hd (List.rev tl));
                   inspections = record.inspections;
                 }
-          | hd :: tl ->
-              let () = Printf.printf "%i: %s\n" m hd in
+          | _ :: tl ->
               process tl record
           | _ -> record
         in
@@ -109,25 +115,23 @@ let () =
   in
   loop ic 0 empty
 
-let run n d =
-  for _ = 1 to n do
+let shenanigans troop n d =
+  for i = 1 to n do
     Array.iteri
       (fun m mkey ->
         let () =
           List.iter
             (fun item ->
-              let worry =
+              let worry = mod_big_int (div_big_int
                 (match mkey.op with
-                | `Add -> item + mkey.x
-                | `Multiply -> item * mkey.x
-                | `Square -> item * item)
-                / d
+                | `Add -> add_big_int item mkey.x
+                | `Multiply -> mult_big_int item mkey.x
+                | `Square -> mult_big_int item item)
+                d) (big_int_of_int 96577)
+                (*d) (big_int_of_int 9699690)*)
               in
               let target =
-                if worry mod mkey.test = 0 then mkey.if_true else mkey.if_false
-              in
-              let () =
-                Printf.printf "worry %i therefore target %i\n" worry target
+                if eq_big_int (mod_big_int worry mkey.test) zero_big_int then mkey.if_true else mkey.if_false
               in
               let tmp = Array.get troop target in
               Array.set troop target
@@ -154,29 +158,64 @@ let run n d =
             inspections = tmp.inspections + List.length mkey.items;
           })
       troop
+; if List.mem i [1; 20; 1000; 2000; 10000] then
+
+    Array.iteri
+      (fun i v ->
+        let () =
+          Printf.printf "Monkey %i: test=%s x=%s t=%i f=%i inspections=%i: " i
+            (string_of_big_int v.test) (string_of_big_int v.x) v.if_true v.if_false v.inspections
+        in
+        Printf.printf "\n")
+      troop
+
   done
 
-let () = run 20 3
+let () =
+  let troop = Array.make 8 empty in
+  let () = catalog troop in
+  let () = shenanigans troop 20 (big_int_of_int 3) in
+(*
+  let () =
+    Array.iteri
+      (fun i v ->
+        let () =
+          Printf.printf "Monkey %i: test=%s x=%s t=%i f=%i inspections=%i: " i
+            (string_of_big_int v.test) (string_of_big_int v.x) v.if_true v.if_false v.inspections
+        in
+        let () = List.iter (fun x -> Printf.printf "%s, " (string_of_big_int x)) v.items in
+        Printf.printf "\n")
+      troop
+  in
+*)
+  let busy_list =
+    Array.fold_left (fun acc v -> v.inspections :: acc) [] troop
+  in
+  let sorted_busy_list = List.rev (List.sort compare busy_list) in
+  Printf.printf "Part one %i\n"
+    (List.hd sorted_busy_list * List.nth sorted_busy_list 1)
 
 let () =
-  Array.iteri
-    (fun i v ->
-      let () =
-        Printf.printf "Monkey %i: test=%i x=%i t=%i f=%i inspections=%i: " i v.test v.x
-          v.if_true v.if_false v.inspections
-      in
-      let () = List.iter (Printf.printf "%i, ") v.items in
-      Printf.printf "\n")
-    troop
-
-let busy_list =
-  Array.fold_left
-    (fun acc v ->
-          v.inspections :: acc
-      ) []
-    troop
-
-let sorted_busy_list = List.rev (List.sort compare busy_list)
-
-let () = Printf.printf "%i\n" ((List.hd sorted_busy_list) * (List.nth sorted_busy_list 1))
+  let troop = Array.make 8 empty in
+  let () = catalog troop in
+  let () = shenanigans troop 10000 unit_big_int in
+(*
+  let () =
+    Array.iteri
+      (fun i v ->
+        let () =
+          Printf.printf "Monkey %i: test=%s x=%s t=%i f=%i inspections=%i: " i
+            (string_of_big_int v.test) (string_of_big_int v.x) v.if_true v.if_false v.inspections
+        in
+        let () = List.iter (fun x -> Printf.printf "%s, " (string_of_big_int x)) v.items in
+        Printf.printf "\n")
+      troop
+  in
+*)
+  let busy_list =
+    Array.fold_left (fun acc v -> v.inspections :: acc) [] troop
+  in
+  let sorted_busy_list = List.rev (List.sort compare busy_list) in
+  Printf.printf "Part two %i\n" 
+    (List.hd sorted_busy_list * List.nth sorted_busy_list 1)
 
