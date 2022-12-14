@@ -57,8 +57,7 @@ let the_end =
 
 let () = Printf.printf "the_end (%i, %i)\n" the_end.x the_end.y
 
-(*
-let rec path route =
+let rec path route next_height =
   let () = draw route in
   let start = List.hd route in
   if start = the_end then route else
@@ -83,16 +82,19 @@ let rec path route =
   in
   let len = List.length choices in
   if len = 0 then []
-  else if len > 500 then []
   else
+    let all_targets = Terrain.filter (fun _ v -> v = next_height) terrain in
+    let target_distance_to_the_end = Terrain.mapi (fun k _ -> distance the_end k) all_targets in
+(*    let () = Terrain.iter (fun k v -> Printf.printf "(%i,%i) distance %f\n" k.x k.y v) target_distance_to_the_end in *)
+    let _, nearest_the_end = Terrain.fold (fun k v (acc, res) -> if v < acc then (v, k) else (acc, res)) target_distance_to_the_end ((distance start the_end), the_end) in
+(*    let () = Printf.printf "nearest %i square is (%i,%i)\n" next_height nearest_the_end.x nearest_the_end.y in *)
     let score_choices =
       List.map
         (fun x ->
           let h0 = Terrain.find start terrain in
           let h1 = Terrain.find x terrain in
-          let h2 = Terrain.find the_end terrain in
-          let h = if h1 > h0 then 1. else if h1 = h0 then 0. else -1. in
-          (x, h +. (1. /. distance x the_end)))
+          let h = if h1 > h0 then 1. else if h1 = h0 then 0. else float_of_int (h0 - h1) in
+          (x, h +. (1. /. distance x nearest_the_end)))
         choices
     in
     let sorted_choices, _ =
@@ -100,20 +102,19 @@ let rec path route =
         (List.rev
            (List.sort
               (fun c1 c2 ->
-                let x1, s1 = c1 in
-                let x2, s2 = c2 in
+                let _, s1 = c1 in
+                let _, s2 = c2 in
                 compare s1 s2)
               score_choices))
     in
-    (* let () = List.iter (fun p -> Printf.printf "(%i,%i)" p.x p.y) sorted_choices in  *)
     List.fold_left
-      (fun acc t -> if List.length acc > 0 then acc else path (t :: route))
+      (fun acc t -> if List.length acc > 0 then acc else path (t :: route) (let h = Terrain.find start terrain in let h1 = Terrain.find t terrain in if h1 > h then (next_height + 1) else next_height))
       [] sorted_choices
 
 let () = Printf.printf "length %i\n" (List.length the_start)
-let a_route = path the_start
-*)
+let a_route = path the_start 1
 
+(*
 let a_route =
   [
     { x = 138; y = 20 };
@@ -922,6 +923,7 @@ let a_route =
     { x = 0; y = 21 };
     { x = 0; y = 20 };
   ]
+*)
 
 let print route =
   let () = List.iter (fun p -> Printf.printf "(%i,%i)" p.x p.y) route in
@@ -932,14 +934,14 @@ let () = print a_route
 let rec optimise route =
   match route with
   | hd :: tl ->
-      let new_tl =
+      let touches =
         List.fold_left
           (fun acc step ->
             let filtered =
               List.filter
                 (fun neighbour ->
                   step = neighbour
-                  && Terrain.find hd terrain = Terrain.find neighbour terrain)
+                  && abs (Terrain.find hd terrain - Terrain.find neighbour terrain) <= 1)
                 [
                   { x = hd.x - 1; y = hd.y };
                   { x = hd.x + 1; y = hd.y };
@@ -947,57 +949,24 @@ let rec optimise route =
                   { x = hd.x; y = hd.y + 1 };
                 ]
             in
-            if List.length filtered > 0 then (hd, List.hd filtered) :: acc
+            if List.length filtered > 0 then filtered @ acc
             else acc)
           [] tl
       in
-      let () =
-        List.iter
-          (fun (h, l) ->
-            let () =
-              Printf.printf "%i (%i,%i) -> (%i,%i): " (List.length new_tl) h.x
-                h.y l.x l.y
-            in
-            Printf.printf "\n")
-          new_tl
-      in
-      if List.length new_tl > 0 then
-        let st, en = List.hd new_tl in
+      if List.length touches > 0 then
         let rec find x lst =
           match lst with
           | [] -> assert false
-          | h :: t -> if x = h then 0 else 1 + find x t
-        in
-        let en_i = find en tl in
-        let nnn = List.filteri (fun i _ -> i >= en_i) tl in
-        hd :: optimise nnn
+          | h :: t -> if x = h then 0 else 1 + find x t in
+        let indicies = List.map (fun x -> find x tl) touches in
+        let max_i = List.fold_left (fun acc x -> if x > acc then x else acc) 0 indicies in
+        let new_tl = List.filteri (fun i _ -> i >= max_i) tl in
+        hd :: optimise new_tl
       else hd :: optimise tl
   | [] -> []
 
 let () = draw a_route
-let shorter = optimise (List.rev a_route)
-let () = Printf.printf "Now %i\n" (List.length shorter)
-let shorter = optimise shorter
-let () = Printf.printf "Now %i\n" (List.length shorter)
-let () = draw shorter
+let optimised = optimise a_route
+let () = Printf.printf "Now %i\n" (List.length optimised)
+let () = draw optimised
 
-(*
-let route_lengths = List.map (fun l -> List.length l - 1) successful_routes
-
-let successful_routes =
-  List.filter
-    (fun route -> Terrain.find (List.hd route) terrain == 27)
-    all_routes
-
-let () =
-  List.iteri
-    (fun i s ->
-      let () = Printf.printf "%i: " i in
-      let () = List.iter (fun p -> Printf.printf "(%i,%i)" p.x p.y) s in
-      Printf.printf "\n")
-    successful_routes
-
-let route_lengths = List.map (fun l -> List.length l - 1) successful_routes
-let shortest_route = List.hd (List.sort compare route_lengths)
-let () = Printf.printf "Shortest route is %i\n" shortest_route
-*)
