@@ -6,7 +6,7 @@ module Terrain = Map.Make (struct
   let compare = compare
 end)
 
-let terrain =
+let load () =
   let ic = open_in "input" in
   let rec loop input row terrain =
     try
@@ -35,6 +35,8 @@ let terrain =
   in
   loop ic 0 Terrain.empty
 
+let terrain = load ()
+
 let draw t =
   for y = 0 to 45 do
     for x = 0 to 169 do
@@ -59,20 +61,18 @@ let () = Printf.printf "the_start (%i, %i)\n" the_start.x the_start.y
 let () = Printf.printf "the_end (%i, %i)\n" the_end.x the_end.y
 let () = draw terrain
 
-let rec rank_neighbours t distance =
+let rank_neighbours t distance =
   let () = draw t in
-  let all_at_distance, _ =
-    List.split
-      (Terrain.bindings (Terrain.filter (fun _ (h, d) -> d = distance) t))
+  let all_at_distance =
+    Terrain.bindings (Terrain.filter (fun _ (_, d) -> d = distance) t)
   in
   let neighbours =
     List.fold_left
-      (fun acc start ->
+      (fun acc (start, (start_height, _)) ->
         acc
         @ List.filter
             (fun query ->
               if Terrain.mem query t then
-                let start_height, start_distance = Terrain.find start t in
                 let query_height, query_distance = Terrain.find query t in
                 (start_height >= query_height || start_height + 1 = query_height)
                 && query_distance = -1
@@ -99,4 +99,3 @@ let rec update t n =
 let terrain = update terrain 0
 let _, steps = Terrain.find the_end terrain
 let () = Printf.printf "the_end (%i, %i) %i steps\n" the_end.x the_end.y steps
-
