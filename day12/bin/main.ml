@@ -6,7 +6,7 @@ module Terrain = Map.Make (struct
   let compare = compare
 end)
 
-let load () =
+let terrain =
   let ic = open_in "input" in
   let rec loop input row terrain =
     try
@@ -34,8 +34,6 @@ let load () =
       terrain
   in
   loop ic 0 Terrain.empty
-
-let terrain = load ()
 
 let draw t =
   for y = 0 to 45 do
@@ -98,4 +96,22 @@ let rec update t n =
 
 let terrain = update terrain 0
 let _, steps = Terrain.find the_end terrain
-let () = Printf.printf "the_end (%i, %i) %i steps\n" the_end.x the_end.y steps
+let () = Printf.printf "the end is at (%i, %i) in %i steps\n" the_end.x the_end.y steps
+
+let terrain =
+  Terrain.map (fun (h, _) -> if h = 27 then (0, 0) else (27 - h, -1)) terrain
+
+let rec update t n =
+  let t2 = rank_neighbours t n in
+  let ground_level =
+    Terrain.cardinal (Terrain.filter (fun _ (h, d) -> h = 26 && d != -1) t2)
+  in
+  if ground_level = 0 then update t2 (n + 1) else t2
+
+let terrain = update terrain 0
+
+let all_ground =
+  Terrain.bindings (Terrain.filter (fun _ (h, d) -> h = 26 && d != -1) terrain)
+
+let _, (_, steps) = List.hd all_ground
+let () = Printf.printf "shortest hike (%i, %i) %i steps\n" the_end.x the_end.y steps
