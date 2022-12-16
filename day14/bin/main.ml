@@ -45,12 +45,23 @@ let cave =
   in
   loop ic Cave.empty
 
+let cave_min, _ = Cave.min_binding cave
+
+let cave_min =
+  Cave.fold
+    (fun k _ acc -> { x = min acc.x k.x; y = min acc.y k.y })
+    cave cave_min
+
 let cave_max, _ = Cave.max_binding cave
-let () = Printf.printf "Cave_Max (%i, %i)\n" cave_max.x cave_max.y
+
+let cave_max =
+  Cave.fold
+    (fun k _ acc -> { x = max acc.x k.x; y = max acc.y k.y })
+    cave cave_max
 
 let draw t =
-  for y = 0 to 200 do
-    for x = 450 to 550 do
+  for y = 0 to cave_max.y do
+    for x = cave_min.x to cave_max.x do
       if Cave.mem { x; y } t then Printf.printf "%c" (Cave.find { x; y } t)
       else Printf.printf " "
     done;
@@ -59,6 +70,8 @@ let draw t =
   flush stdout
 
 let () = draw cave
+
+exception Abyss of int
 
 let rec add_sand c pos =
   let options =
@@ -77,16 +90,16 @@ let rec add_sand c pos =
         with Not_found -> true)
       options
   in
-  let () =
-    List.iter (fun x -> Printf.printf "could move to (%i,%i)\n" x.x x.y) valid
-  in
   if List.length valid = 0 then Cave.add pos 'o' c
+  else if (List.hd valid).y > cave_max.y then raise (Abyss 0)
   else add_sand c (List.hd valid)
 
 let rec loop c n =
-if n > 0 then
-let c = add_sand c { x = 500; y = 0 } in
- let () = draw c in loop c (n - 1)
-else c
+  try
+    let c = add_sand c { x = 500; y = 0 } in
+    let () = draw c in
+    loop c (n + 1)
+  with Abyss _ -> (c, n)
 
-let _ = loop cave 900
+let _, iterations = loop cave 0
+let () = Printf.printf "Iterations %i\n" iterations
