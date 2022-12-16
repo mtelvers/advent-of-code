@@ -140,22 +140,21 @@ let _ =
         let () =
           if sensor.y - n >= 0 && sensor.y - n <= 4_000_000 then
             Array.set rows (sensor.y - n)
-              (merge
-                 (List.sort (compare) ((sensor.x - (delta - n), sensor.x + (delta - n))
-                 :: rows.(sensor.y - n))))
+              ((sensor.x - (delta - n), sensor.x + (delta - n))
+                 :: rows.(sensor.y - n))
           else ()
         in
         if sensor.y + n >= 0 && sensor.y + n <= 4_000_000 then
           Array.set rows (sensor.y + n)
-            (merge
-               (List.sort (compare) ((sensor.x - (delta - n), sensor.x + (delta - n))
-               :: rows.(sensor.y + n))))
+               ((sensor.x - (delta - n), sensor.x + (delta - n))
+               :: rows.(sensor.y + n))
         else ()
       done)
     data
 
 let () =
   for n = 0 to 4000000 do
+    let () = Array.set rows n (merge (List.sort (compare) rows.(n))) in
     if List.length rows.(n) > 1 then
       List.iter (fun (l, h) -> Printf.printf "%i: %i -> %i\n" n l h) rows.(n)
   done
