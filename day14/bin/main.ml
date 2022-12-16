@@ -60,8 +60,8 @@ let cave_max =
     cave cave_max
 
 let draw t =
-  for y = 0 to cave_max.y do
-    for x = cave_min.x to cave_max.x do
+  for y = 0 to cave_max.y + 5 do
+    for x = cave_min.x - 20 to cave_max.x + 20 do
       if Cave.mem { x; y } t then Printf.printf "%c" (Cave.find { x; y } t)
       else Printf.printf " "
     done;
@@ -72,8 +72,9 @@ let draw t =
 let () = draw cave
 
 exception Abyss of int
+exception Blocked of int
 
-let rec add_sand c pos =
+let rec add_sand c pos max_y =
   let options =
     [
       { x = pos.x; y = pos.y + 1 };
@@ -90,16 +91,34 @@ let rec add_sand c pos =
         with Not_found -> true)
       options
   in
-  if List.length valid = 0 then Cave.add pos 'o' c
-  else if (List.hd valid).y > cave_max.y then raise (Abyss 0)
-  else add_sand c (List.hd valid)
+  if List.length valid = 0 then
+    if pos.y = 0 then raise (Blocked 0) else Cave.add pos 'o' c
+  else if (List.hd valid).y > max_y then raise (Abyss 0)
+  else add_sand c (List.hd valid) max_y
 
 let rec loop c n =
   try
-    let c = add_sand c { x = 500; y = 0 } in
+    let c = add_sand c { x = 500; y = 0 } cave_max.y in
     let () = draw c in
     loop c (n + 1)
   with Abyss _ -> (c, n)
 
-let _, iterations = loop cave 0
+let cave, iterations = loop cave 0
 let () = Printf.printf "Iterations %i\n" iterations
+let cave_max = { x = cave_max.x; y = cave_max.y + 2 }
+
+let add_floor c =
+  List.fold_left
+    (fun c i -> Cave.add { x = i; y = cave_max.y } '#' c)
+    c (1 -- 1000)
+
+let cave = add_floor cave
+
+let rec loop c n =
+  try
+    let c = add_sand c { x = 500; y = 0 } cave_max.y in
+    loop c (n + 1)
+  with Blocked _ -> (c, n)
+
+let _, iterations = loop cave iterations
+let () = Printf.printf "Iterations %i\n" (iterations + 1)
