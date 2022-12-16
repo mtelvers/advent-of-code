@@ -36,22 +36,28 @@ let cave =
             let () = flush stdout in
             let delta = abs (beacon_x - sensor_x) + abs (beacon_y - sensor_y) in
             let nc =
-              List.fold_left
-                (fun acc y ->
-                  List.fold_left
-                    (fun acc x ->
-                      let distance = abs (x - sensor_x) + abs (y - sensor_y) in
-                      if distance <= delta then
-                        if Cave.mem { x; y } acc then acc
-                        else Cave.add { x; y } '#' acc
-                      else acc)
-                    acc
-                    (sensor_x - delta -- (sensor_x + delta)))
-                c
-                (sensor_y - delta -- (sensor_y + delta))
+              let rec iloop c n =
+                if n >= 0 then
+                  let rec xloop c x y ux =
+                    if x < ux then
+                      let c = Cave.add { x; y } '#' c in
+                      xloop c (x + 1) y ux
+                    else c
+                  in
+                    let c = xloop c
+                       (sensor_x - (delta - n))
+                       (sensor_y - n)
+                       (sensor_x + (delta - n)) in
+                    let c = xloop c
+                       (sensor_x - (delta - n))
+                       (sensor_y + n)
+                       (sensor_x + (delta - n)) in
+                  iloop c
+                    (n - 1)
+                else c
+              in
+              iloop c delta
             in
-            let nc = Cave.add { x = sensor_x; y = sensor_y } 'S' nc in
-            let nc = Cave.add { x = beacon_x; y = beacon_y } 'B' nc in
             plot nc tail
         | _ -> c
       in
@@ -62,6 +68,42 @@ let cave =
       cave
   in
   loop ic Cave.empty
+
+let cave =
+  let ic = open_in "input" in
+  let rec loop input cave =
+    try
+      let line = input_line input in
+      let tkn = Str.split (Str.regexp "[ =:,]+") line in
+      let tkn =
+        List.filter
+          (fun test ->
+            try
+              let _ = int_of_string test in
+              true
+            with Failure _ -> false)
+          tkn
+      in
+      let tkn = List.map int_of_string tkn in
+      let rec plot c l =
+        match l with
+        | sensor_x :: sensor_y :: beacon_x :: beacon_y :: tail ->
+            let () =
+              Printf.printf "Sensor (%i, %i) Beacon (%i, %i)\n" sensor_x
+                sensor_y beacon_x beacon_y
+            in
+            let c = Cave.add { x = sensor_x; y = sensor_y } 'S' c in
+            let c = Cave.add { x = beacon_x; y = beacon_y } 'B' c in
+            plot c tail
+        | _ -> c
+      in
+      let new_cave = plot cave tkn in
+      loop input new_cave
+    with End_of_file ->
+      close_in input;
+      cave
+  in
+  loop ic cave
 
 let draw t =
   for y = -5 to 30 do
