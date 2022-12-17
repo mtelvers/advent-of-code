@@ -37,6 +37,7 @@ let data =
   in
   loop ic []
 
+(*
 let draw c =
   for y = -5 to 30 do
     Printf.printf "%2i: " y;
@@ -47,6 +48,7 @@ let draw c =
     Printf.printf "\n"
   done;
   flush stdout
+*)
 
 let cave =
   List.fold_left
@@ -61,7 +63,7 @@ let cave =
         let rec iloop acc n =
           if n >= 0 then
             let rec xloop acc x y ux =
-              if (*y = row && *) x <= ux then
+              if y = row && x <= ux then
                 let acc = Cave.add { x; y } '#' acc in
                 xloop acc (x + 1) y ux
               else acc
@@ -89,17 +91,10 @@ let cave =
 let cave =
   List.fold_left
     (fun acc (sensor, beacon) ->
-      let () =
-        Printf.printf "Sensor (%i, %i) Beacon (%i, %i)\n" sensor.x sensor.y
-          beacon.x beacon.y
-      in
-      let () = flush stdout in
       let acc = Cave.add { x = sensor.x; y = sensor.y } 'S' acc in
       let acc = Cave.add { x = beacon.x; y = beacon.y } 'B' acc in
       acc)
     cave data
-
-let () = draw cave
 
 let count c y =
   Cave.fold
@@ -107,11 +102,8 @@ let count c y =
     c 0
 
 let () = Printf.printf "Row %i has %i\n" row (count cave row)
-let rows = Array.make 4000001 []
 
 let merge lst =
-  let () = List.iter (fun (l, h) -> Printf.printf "%i -> %i, " l h ) lst in
-  let () = Printf.printf " ==> " in
   let rec loop lst =
     match lst with
     | (l1, h1) :: (l2, h2) :: tl ->
@@ -120,51 +112,29 @@ let merge lst =
     | hd :: [] -> hd :: loop []
     | [] -> []
   in
-  let merged =
-  loop (List.sort compare lst)
-  in 
-  let () = List.iter (fun (l, h) -> Printf.printf "%i -> %i," l h ) lst in
-  let () = Printf.printf "\n" in
-   merged
+  let merged = loop (List.sort compare lst) in
+  merged
 
-let _ =
-  List.iter
-    (fun (sensor, beacon) ->
-      let () =
-        Printf.printf "Sensor (%i, %i) Beacon (%i, %i)\n" sensor.x sensor.y
-          beacon.x beacon.y
-      in
-      let () = flush stdout in
-      let delta = abs (beacon.x - sensor.x) + abs (beacon.y - sensor.y) in
-      for n = 0 to delta do
-        let () =
-          if sensor.y - n >= 0 && sensor.y - n <= 4_000_000 then
-            Array.set rows (sensor.y - n)
-              ((sensor.x - (delta - n), sensor.x + (delta - n))
-                 :: rows.(sensor.y - n))
-          else ()
-        in
-        if sensor.y + n >= 0 && sensor.y + n <= 4_000_000 then
-          Array.set rows (sensor.y + n)
-               ((sensor.x - (delta - n), sensor.x + (delta - n))
-               :: rows.(sensor.y + n))
-        else ()
-      done)
-    data
+let process lower upper =
+  let rec loop n =
+    let row =
+      List.fold_left
+        (fun acc (sensor, beacon) ->
+          let delta = abs (beacon.x - sensor.x) + abs (beacon.y - sensor.y) in
+          let offset = delta - abs (sensor.y - n) in
+          if offset < lower then acc
+          else (sensor.x - offset, sensor.x + offset) :: acc)
+        [] data
+    in
+    let merged = merge row in
+    if List.length merged > 1 then (n, merged)
+    else if n >= lower then loop (n - 1)
+    else (-1, [])
+  in
+  loop upper
 
-let () =
-  for n = 0 to 4000000 do
-    let () = Array.set rows n (merge (List.sort (compare) rows.(n))) in
-    if List.length rows.(n) > 1 then
-      List.iter (fun (l, h) -> Printf.printf "%i: %i -> %i\n" n l h) rows.(n)
-  done
-
-(*
-let my_lst = [ (8, 10); (-3, 10) ]
-let () = Printf.printf "list\n"
-let () = List.iter (fun (l, h) -> Printf.printf "%i -> %i\n" l h ) my_lst
-let () = Printf.printf "sorted\n"
-let () = List.iter (fun (l, h) -> Printf.printf "%i -> %i\n" l h ) (List.sort (compare) my_lst)
-let () = Printf.printf "results in\n"
-let () = List.iter (fun (l, h) -> Printf.printf "%i -> %i\n" l h ) (merge my_lst)
-*)
+let row, ranges = process 0 4_000_000
+let () = Printf.printf "Row %i has a gap:\n" row
+let () = List.iter (fun (l, h) -> Printf.printf "%i -> %i\n" l h) ranges
+let _, x = List.hd ranges
+let () = Printf.printf "Total %i\n" (((x + 1) * 4_000_000) + row)
