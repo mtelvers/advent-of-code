@@ -85,7 +85,7 @@ let rec calculate ch ro st nr =
             | 'v' -> { x = start.x; y = start.y - 1 }
             | _ -> start
           in
-          let () =
+(*          let () =
             Printf.printf "%i,%i %c %s %s %i\n" start.x start.y w
               (if possible (List.hd rcks) start then "true" else "false")
               (if possible (List.hd rcks) new_pos then "true" else "false")
@@ -99,7 +99,7 @@ let rec calculate ch ro st nr =
                      { x = start.x + stone.x; y = start.y + stone.y }
                      '@' acc)
                  chamber (List.hd rcks))
-          in
+          in *)
           match
             (possible (List.hd rcks) start, possible (List.hd rcks) new_pos, w)
           with
@@ -123,9 +123,19 @@ let rec calculate ch ro st nr =
           | false, _, _ -> (chamber, [], { x = 0; y = 0 }, 0))
       (ch, ro, st, nr) wind
   in
-  if n = 0 then (c, n) else calculate c r s n
+let () = Printf.printf "loop %i (map %i) repeat %s - " n (Chamber.cardinal c) 
+(if List.length r > 0 && List.hd rocks = List.hd r then "yes" else "no") in
+let () = flush stdout in
+  if n = 0 then
+(c, n) else (
+let max_y = Chamber.fold (fun k _ y -> max y k.y) c 0 in
+let pruned = Chamber.filter (fun k _ -> k.y + 15 > max_y) c in
+let () = Printf.printf "pruned to %i\n" (Chamber.cardinal pruned) in
+calculate pruned r s n
+)
 
-let chamber, nrocks = calculate Chamber.empty rocks { x = 2; y = 3 } 2022
+let chamber, nrocks = calculate Chamber.empty rocks { x = 2; y = 3 } 10_000_000
 let () = draw chamber
 let max_y = Chamber.fold (fun k _ y -> max y k.y) chamber 0
 let () = Printf.printf "%i rocks left Height %i\n" nrocks (max_y + 1)
+
