@@ -10,6 +10,8 @@ type blueprint = {
   geode_robot : quantity;
 }
 
+let cache = Hashtbl.create 1000
+
 let blueprints =
   let ic = open_in "input" in
   let rec loop input lst =
@@ -55,6 +57,8 @@ type play =
 let rec search bp depth stock robots =
   if depth = 0 then stock
   else
+  if Hashtbl.mem cache (depth, stock, robots) then
+  Hashtbl.find cache (depth, stock, robots) else
 (*
 let () = if depth > 10 then Printf.printf "depth %i: Stock [ ore %i clay %i obsidian %i geode %i ] Robots [ ore %i clay %i obsidian %i geode %i ]\n" depth
 stock.ore stock.clay stock.obsidian stock.geode 
@@ -80,6 +84,7 @@ robots.ore robots.clay robots.obsidian robots.geode  in *)
           `BuyGeodeRobot;
         ]
     in
+    let best =
     List.fold_left
       (fun acc choice ->
         match choice with
@@ -173,6 +178,7 @@ robots.ore robots.clay robots.obsidian robots.geode  in *)
             if r.geode > acc.geode then r else acc)
       { ore = 0; clay = 0; obsidian = 0; geode = 0 }
       choices
+     in let () = Hashtbl.add cache (depth, stock, robots) best in best
 
 (*
 let jobs =
