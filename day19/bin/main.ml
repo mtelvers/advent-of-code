@@ -45,25 +45,6 @@ let blueprints =
   in
   loop ic []
 
-(*
-let bp =
-  {
-    id = 1;
-    ore_robot = { ore = 4; clay = 0; obsidian = 0; geode = 0 };
-    clay_robot = { ore = 2; clay = 0; obsidian = 0; geode = 0 };
-    obsidian_robot = { ore = 3; clay = 14; obsidian = 0; geode = 0 };
-    geode_robot = { ore = 2; clay = 0; obsidian = 7; geode = 0 };
-  }
-*)
-let bp =
-  {
-    id = 2;
-    ore_robot = { ore = 2; clay = 0; obsidian = 0; geode = 0 };
-    clay_robot = { ore = 3; clay = 0; obsidian = 0; geode = 0 };
-    obsidian_robot = { ore = 3; clay = 8; obsidian = 0; geode = 0 };
-    geode_robot = { ore = 3; clay = 0; obsidian = 12; geode = 0 };
-  }
-
 type play =
   [ `BuyNothing
   | `BuyOreRobot
@@ -74,11 +55,10 @@ type play =
 let rec search bp depth stock robots =
   if depth = 0 then stock
   else
-    (*
+(*
 let () = if depth > 10 then Printf.printf "depth %i: Stock [ ore %i clay %i obsidian %i geode %i ] Robots [ ore %i clay %i obsidian %i geode %i ]\n" depth
 stock.ore stock.clay stock.obsidian stock.geode 
-robots.ore robots.clay robots.obsidian robots.geode  in
-*)
+robots.ore robots.clay robots.obsidian robots.geode  in *)
     let choices =
       List.filter
         (fun (choice : play) ->
@@ -197,6 +177,11 @@ robots.ore robots.clay robots.obsidian robots.geode  in
 let jobs =
   List.fold_left
     (fun acc bp ->
+      let () =  Printf.printf "%i: %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i\n" bp.id
+bp.ore_robot.ore bp.ore_robot.clay bp.ore_robot.obsidian bp.ore_robot.geode
+bp.clay_robot.ore bp.clay_robot.clay bp.clay_robot.obsidian bp.clay_robot.geode
+bp.obsidian_robot.ore bp.obsidian_robot.clay bp.obsidian_robot.obsidian bp.obsidian_robot.geode
+bp.geode_robot.ore bp.geode_robot.clay bp.geode_robot.obsidian bp.geode_robot.geode in let () = flush stdout in
       Domain.spawn (fun _ ->
           search bp 24
             { ore = 0; clay = 0; obsidian = 0; geode = 0 }
@@ -213,3 +198,6 @@ let result =
       in
       acc + (bp.id * r.geode))
     0 jobs blueprints
+
+let () = Printf.printf "%i\n" result
+
