@@ -182,11 +182,10 @@ bp.ore_robot.ore bp.ore_robot.clay bp.ore_robot.obsidian bp.ore_robot.geode
 bp.clay_robot.ore bp.clay_robot.clay bp.clay_robot.obsidian bp.clay_robot.geode
 bp.obsidian_robot.ore bp.obsidian_robot.clay bp.obsidian_robot.obsidian bp.obsidian_robot.geode
 bp.geode_robot.ore bp.geode_robot.clay bp.geode_robot.obsidian bp.geode_robot.geode in let () = flush stdout in
-      Domain.spawn (fun _ ->
+      acc @ [Domain.spawn (fun _ ->
           search bp 24
             { ore = 0; clay = 0; obsidian = 0; geode = 0 }
-            { ore = 1; clay = 0; obsidian = 0; geode = 0 })
-      :: acc)
+            { ore = 1; clay = 0; obsidian = 0; geode = 0 }) ])
     [] blueprints
 
 let result =
