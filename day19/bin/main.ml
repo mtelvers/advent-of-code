@@ -10,8 +10,6 @@ type blueprint = {
   geode_robot : quantity;
 }
 
-let cache = Hashtbl.create 1000
-
 let blueprints =
   let ic = open_in "input" in
   let rec loop input lst =
@@ -54,7 +52,7 @@ type play =
   | `BuyObsidianRobot
   | `BuyGeodeRobot ]
 
-let rec search bp depth stock robots =
+let rec search bp depth stock robots cache =
   if depth = 0 then stock
   else
   if Hashtbl.mem cache (depth, stock, robots) then
@@ -97,7 +95,7 @@ robots.ore robots.clay robots.obsidian robots.geode  in *)
                 geode = stock.geode + robots.geode;
               }
             in
-            let r = search bp (depth - 1) updated_stock robots in
+            let r = search bp (depth - 1) updated_stock robots cache in
             if r.geode > acc.geode then r else acc
         | `BuyOreRobot ->
             let updated_stock =
@@ -116,7 +114,7 @@ robots.ore robots.clay robots.obsidian robots.geode  in *)
                 geode = robots.geode;
               }
             in
-            let r = search bp (depth - 1) updated_stock updated_robots in
+            let r = search bp (depth - 1) updated_stock updated_robots cache in
             if r.geode > acc.geode then r else acc
         | `BuyClayRobot ->
             let updated_stock =
@@ -135,7 +133,7 @@ robots.ore robots.clay robots.obsidian robots.geode  in *)
                 geode = robots.geode;
               }
             in
-            let r = search bp (depth - 1) updated_stock updated_robots in
+            let r = search bp (depth - 1) updated_stock updated_robots cache in
             if r.geode > acc.geode then r else acc
         | `BuyObsidianRobot ->
             let updated_stock =
@@ -154,7 +152,7 @@ robots.ore robots.clay robots.obsidian robots.geode  in *)
                 geode = robots.geode;
               }
             in
-            let r = search bp (depth - 1) updated_stock updated_robots in
+            let r = search bp (depth - 1) updated_stock updated_robots cache in
             if r.geode > acc.geode then r else acc
         | `BuyGeodeRobot ->
             let updated_stock =
@@ -174,7 +172,7 @@ robots.ore robots.clay robots.obsidian robots.geode  in *)
                 geode = robots.geode + 1;
               }
             in
-            let r = search bp (depth - 1) updated_stock updated_robots in
+            let r = search bp (depth - 1) updated_stock updated_robots cache in
             if r.geode > acc.geode then r else acc)
       { ore = 0; clay = 0; obsidian = 0; geode = 0 }
       choices
@@ -223,7 +221,7 @@ bp.geode_robot.ore bp.geode_robot.clay bp.geode_robot.obsidian bp.geode_robot.ge
       acc @ [Domain.spawn (fun _ ->
           search bp 32
             { ore = 0; clay = 0; obsidian = 0; geode = 0 }
-            { ore = 1; clay = 0; obsidian = 0; geode = 0 }) ])
+            { ore = 1; clay = 0; obsidian = 0; geode = 0 } (Hashtbl.create 1_000_000)) ])
     [] blueprints
 
 let result =
