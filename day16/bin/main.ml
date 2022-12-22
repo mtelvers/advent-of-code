@@ -44,38 +44,32 @@ let rec bfs start dests path n =
         else (acc, cor))
       (path, []) dests
   in
-  if List.length corridors > 0 then
-  bfs start corridors new_p (n + 1)
-  else path
+  if List.length corridors > 0 then bfs start corridors new_p (n + 1) else path
 
 let paths =
-  Chambers.fold
-    (fun ch v pa -> bfs ch [ch] pa 0)
-    chambers Paths.empty
+  Chambers.fold (fun ch v pa -> bfs ch [ ch ] pa 0) chambers Paths.empty
 
 let working_valves =
   Chambers.fold (fun ch j lst -> if j.n > 0 then ch :: lst else lst) chambers []
 
-let () = List.iter print_endline working_valves
-
 let rec simulate time pos visited water =
-  if time = 0 then
-water
+  if time = 0 then water
   else
     let flow = Chambers.fold (fun _ n total -> total + n) visited 0 in
     if Chambers.cardinal visited = List.length working_valves then
-       simulate 0 pos visited (water + flow * time)
+      simulate 0 pos visited (water + (flow * time))
     else
-    List.fold_left
-      (fun bst dest ->
-        if not (Chambers.mem dest visited) then
-          let j = Chambers.find dest chambers in
-          let d = min (1 + Paths.find { start = pos; finish = dest } paths) time in
-          let nv = Chambers.add dest j.n visited in
-          max bst (simulate (time - d) dest nv (water + (flow * d)))
-        else bst)
-      0 working_valves
+      List.fold_left
+        (fun bst dest ->
+          if not (Chambers.mem dest visited) then
+            let j = Chambers.find dest chambers in
+            let d =
+              min (1 + Paths.find { start = pos; finish = dest } paths) time
+            in
+            let nv = Chambers.add dest j.n visited in
+            max bst (simulate (time - d) dest nv (water + (flow * d)))
+          else bst)
+        0 working_valves
 
-let best = simulate 30 "AA" Chambers.empty 0 "AA"
+let best = simulate 30 "AA" Chambers.empty 0
 let () = Printf.printf "Best %i\n" best
-
