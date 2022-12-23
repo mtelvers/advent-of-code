@@ -114,31 +114,22 @@ let step board options =
   let () = draw moved in
   moved
 
-let board = step board [ (north, 'N'); (south, 'S'); (west, 'W'); (east, 'E') ]
-let board = step board [ (south, 'S'); (west, 'W'); (east, 'E'); (north, 'N') ]
-let board = step board [ (west, 'W'); (east, 'E'); (north, 'N'); (south, 'S') ]
-let board = step board [ (east, 'E'); (north, 'N'); (south, 'S'); (west, 'W') ]
-let board = step board [ (north, 'N'); (south, 'S'); (west, 'W'); (east, 'E') ]
-let board = step board [ (south, 'S'); (west, 'W'); (east, 'E'); (north, 'N') ]
-let board = step board [ (west, 'W'); (east, 'E'); (north, 'N'); (south, 'S') ]
-let board = step board [ (east, 'E'); (north, 'N'); (south, 'S'); (west, 'W') ]
-let board = step board [ (north, 'N'); (south, 'S'); (west, 'W'); (east, 'E') ]
-let board = step board [ (south, 'S'); (west, 'W'); (east, 'E'); (north, 'N') ]
+let rec simulate n board options = if n = 0 then board else simulate (n - 1) (step board options) (List.tl options @ [ List.hd options ])
+let board = simulate 10 board [ (north, 'N'); (south, 'S'); (west, 'W'); (east, 'E') ]
 
 let min_coord =
   let min_binding, _ = Board.min_binding board in
-  Board.fold
-    (fun k _ mi -> { x = min mi.x k.x; y = min mi.y k.y})
-    board min_binding
+  Board.fold (fun k _ mi -> { x = min mi.x k.x; y = min mi.y k.y }) board min_binding
 
 let max_coord =
   let max_binding, _ = Board.max_binding board in
-  Board.fold
-    (fun k _ mx -> { x = max mx.x k.x; y = max mx.y k.y})
-    board max_binding
+  Board.fold (fun k _ mx -> { x = max mx.x k.x; y = max mx.y k.y }) board max_binding
 
 let () = Printf.printf "min %i %i\n" min_coord.x min_coord.y
 let () = Printf.printf "max %i %i\n" max_coord.x max_coord.y
-let () = Printf.printf "area = %i, %i elves -> %i\n"
-((1 + (max_coord.x - min_coord.x)) * (1 + (max_coord.y - min_coord.y))) (Board.cardinal board)
-(((1 + (max_coord.x - min_coord.x)) * (1 + (max_coord.y - min_coord.y))) - (Board.cardinal board))
+
+let () =
+  Printf.printf "area = %i, %i elves -> %i\n"
+    ((1 + (max_coord.x - min_coord.x)) * (1 + (max_coord.y - min_coord.y)))
+    (Board.cardinal board)
+    (((1 + (max_coord.x - min_coord.x)) * (1 + (max_coord.y - min_coord.y))) - Board.cardinal board)
