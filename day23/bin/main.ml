@@ -112,9 +112,14 @@ let step board options =
   in
 
   let () = draw moved in
-  moved
+  (moved, Board.cardinal moveable)
 
-let rec simulate n board options = if n = 0 then board else simulate (n - 1) (step board options) (List.tl options @ [ List.hd options ])
+let rec simulate n board options =
+  if n = 0 then board
+  else
+    let b, m = step board options in
+    simulate (n - 1) b (List.tl options @ [ List.hd options ])
+
 let board = simulate 10 board [ (north, 'N'); (south, 'S'); (west, 'W'); (east, 'E') ]
 
 let min_coord =
@@ -133,3 +138,10 @@ let () =
     ((1 + (max_coord.x - min_coord.x)) * (1 + (max_coord.y - min_coord.y)))
     (Board.cardinal board)
     (((1 + (max_coord.x - min_coord.x)) * (1 + (max_coord.y - min_coord.y))) - Board.cardinal board)
+
+let rec simulate n board options =
+  let b, m = step board options in
+  if m > 0 then simulate (n + 1) b (List.tl options @ [ List.hd options ]) else n
+
+let steps = simulate 11 board [ (west, 'W'); (east, 'E'); (north, 'N'); (south, 'S') ]
+let () = Printf.printf "Number of steps %i\n" steps
