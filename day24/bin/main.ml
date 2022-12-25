@@ -86,22 +86,25 @@ let option_queue_2 = Queue.create ()
 let () = Queue.add origin option_queue_1
 let cache = Hashtbl.create 100_000
 
-let rec simulate time blizzards directions queue =
+let rec simulate time blizzards directions targets =
   let () = Printf.printf "time %i queue %i\n" time (Queue.length option_queue_1) in
   let () = flush stdout in
   let blizzards = blow blizzards directions in
   let board = List.fold_left (fun acc b -> Board.add b '#' acc) Board.empty blizzards in
   let () = Queue.transfer option_queue_1 option_queue_2 in
-  let () =
-    Queue.iter
-      (fun expedition ->
-        let () =
-          if expedition = target then
+  let t = List.hd targets in
+  let reached = Queue.fold (fun acc el -> if el = t then true else acc) false option_queue_2 in
+  let () = if reached && (List.length targets = 1) then
             let () = Printf.printf "time %i\n" time in
             let () = flush stdout in
             assert false
-          else ()
-        in
+       else () in
+  let targets = if reached then (List.tl targets) else targets in
+  let () = if reached then let () = Queue.clear option_queue_2 in Queue.add t option_queue_2 else () in
+  let () = if reached then Hashtbl.reset cache else () in
+  let () =
+    Queue.iter
+      (fun expedition ->
         let options =
           List.map
             (fun vector -> { x = expedition.x + vector.x; y = expedition.y + vector.y })
@@ -132,6 +135,6 @@ let rec simulate time blizzards directions queue =
       option_queue_2
   in
   let () = Queue.clear option_queue_2 in
-  simulate (time + 1) blizzards directions queue
+  simulate (time + 1) blizzards directions targets
 
-let _ = simulate 0 blizzards directions [ origin ]
+let _ = simulate 0 blizzards directions [ target; origin; target ]
