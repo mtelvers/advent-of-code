@@ -81,49 +81,57 @@ let blow b d =
         ])
     [] b d
 
-let best = [| 900 |]
+let option_queue_1 = Queue.create ()
+let option_queue_2 = Queue.create ()
+let () = Queue.add origin option_queue_1
+let cache = Hashtbl.create 100_000
 
-let rec simulate time blizzards directions expedition =
-  let () = Printf.printf "%i %i\n" time best.(0) in
+let rec simulate time blizzards directions queue =
+  let () = Printf.printf "time %i queue %i\n" time (Queue.length option_queue_1) in
   let () = flush stdout in
-  if expedition = target then
-    if time < best.(0) then
-      let _ = Array.set best 0 time in
-      time
-    else time
-  else if time > best.(0) then time
-  else
-    (*  let () = draw blizzards directions [ expedition ] in *)
-    let blizzards = blow blizzards directions in
-    let board = List.fold_left (fun acc b -> Board.add b '#' acc) Board.empty blizzards in
-    let options =
-      List.map
-        (fun vector -> { x = expedition.x + vector.x; y = expedition.y + vector.y })
-        [
-{ x = 1; y = 0 };
-{ x = 0; y = 1 };
-{ x = -1; y = 0 };
-{ x = 0; y = -1 };
-{ x = 0; y = 0 }
-]
-    in
-    let options =
-      List.filter
-        (fun new_position ->
-          let blizzard = Board.mem new_position board in
-          let out_of_bounds =
-            new_position.x < top_left.x || new_position.y < top_left.y || new_position.x > bottom_right.x || new_position.y > bottom_right.y
-          in
-          let the_end = new_position = target in
-          let the_start = new_position = origin in
-          ((not blizzard) && not out_of_bounds) || the_end || the_start)
-        options
-    in
-    (*
+  let blizzards = blow blizzards directions in
+  let board = List.fold_left (fun acc b -> Board.add b '#' acc) Board.empty blizzards in
+  let () = Queue.transfer option_queue_1 option_queue_2 in
+  let () =
+    Queue.iter
+      (fun expedition ->
+        let () =
+          if expedition = target then
+            let () = Printf.printf "time %i\n" time in
+            let () = flush stdout in
+            assert false
+          else ()
+        in
+        let options =
+          List.map
+            (fun vector -> { x = expedition.x + vector.x; y = expedition.y + vector.y })
+            [ { x = 1; y = 0 }; { x = 0; y = 1 }; { x = -1; y = 0 }; { x = 0; y = -1 }; { x = 0; y = 0 } ]
+        in
+        let options =
+          List.filter
+            (fun new_position ->
+              let blizzard = Board.mem new_position board in
+              let out_of_bounds =
+                new_position.x < top_left.x || new_position.y < top_left.y || new_position.x > bottom_right.x || new_position.y > bottom_right.y
+              in
+              let the_end = new_position = target in
+              let the_start = new_position = origin in
+              ((not blizzard) && not out_of_bounds) || the_end || the_start)
+            options
+        in
+        List.iter
+          (fun o ->
+            if not (Hashtbl.mem cache (o, time)) then
+              let () = Hashtbl.add cache (o, time) 1 in
+              Queue.add o option_queue_1)
+          options
+        (*
     let () = List.iter (fun v -> Printf.printf "%i, %i\n" v.x v.y) options in
     let () = draw blizzards directions options in
-*)
-    List.fold_left (fun tt o -> min (simulate (time + 1) blizzards directions o) tt) (time + 1_000_000) options
+*))
+      option_queue_2
+  in
+  let () = Queue.clear option_queue_2 in
+  simulate (time + 1) blizzards directions queue
 
-let minimum_step = simulate 0 blizzards directions origin
-let () = Printf.printf "%i\n" minimum_step
+let _ = simulate 0 blizzards directions [ origin ]
