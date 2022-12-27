@@ -1,193 +1,69 @@
-(* OK - I should have used a binary tree! *)
+type operator = [ `Add | `Subtract | `Multiply | `Divide | `Equal ]
+type monkey = { name : string; op : operator; n : int }
 
-type operator = [ `Add | `Subtract | `Multiply | `Divide ]
+type 'a tree = Leaf | Node of 'a node
+and 'a node = { value : 'a; left : 'a tree; right : 'a tree }
 
-type monkey = {
-  name : string;
-  left : string option;
-  op : operator option;
-  right : string option;
-  l : int option;
-  r : int option;
-  n : int option;
-}
+let operator_of_string s = match s with "+" -> `Add | "-" -> `Subtract | "*" -> `Multiply | "/" -> `Divide | _ -> `Equal
 
-let get_int = function Some v -> v | None -> 0
+module Data = Map.Make (String)
 
-let operator_of_string s =
-  match s with
-  | "+" -> Some `Add
-  | "-" -> Some `Subtract
-  | "*" -> Some `Multiply
-  | "/" -> Some `Divide
-  | _ -> None
+(* ptdq: humn - dvpt *)
+(* dvpt: 3           *)
 
-let read_file =
+let input_map =
   let ic = open_in "input" in
-  let rec loop input lst =
+  let rec loop input data =
     try
       let line = input_line input in
       let tkn = Str.split (Str.regexp "[ :]+") line in
-      let r =
-        match tkn with
-        | aa :: bb :: cc :: dd :: _ ->
-            {
-              name = aa;
-              left = Some bb;
-              op = operator_of_string cc;
-              right = Some dd;
-              l = None;
-              r = None;
-              n = None;
-            }
-        | aa :: bb :: _ ->
-            {
-              name = aa;
-              left = None;
-              op = None;
-              right = None;
-              l = None;
-              r = None;
-              n = Some (int_of_string bb);
-            }
-        | _ -> assert false
-      in
-      r :: loop input lst
+      loop input (match tkn with hd :: tl -> Data.add hd tl data | _ -> data)
     with End_of_file ->
       close_in input;
-      lst
+      data
   in
-  loop ic []
+  loop ic Data.empty
 
-let monkeys = Array.of_list read_file
+let rec calculate = function
+  | Leaf -> 0
+  | Node { value; left; right } -> (
+      match value.op with
+      | `Add -> calculate left + calculate right
+      | `Subtract -> calculate left - calculate right
+      | `Multiply -> calculate left * calculate right
+      | `Divide -> calculate left / calculate right
+      | `Equal -> value.n)
 
-let rec find_name a str n =
-  let m = a.(n) in
-  if m.name = str then n else find_name a str (n + 1)
+let rec create_tree map name =
+  let lst = Data.find name map in
+  match lst with
+  | node1 :: oper :: node2 :: _ -> Node { value = { name; op = operator_of_string oper; n = 0 }; left = create_tree map node1; right = create_tree map node2 }
+  | num :: _ -> Node { value = { name; op = `Equal; n = int_of_string num }; left = Leaf; right = Leaf }
+  | _ -> assert false
 
-let rec subsitute monkeys =
-  let () =
-    Array.iter
-      (fun m ->
-        match m.n with
-        | Some _ ->
-            let () =
-              Array.iteri
-                (fun i mm ->
-                  if Some m.name = mm.left then
-                    Array.set monkeys i
-                      {
-                        name = mm.name;
-                        left = mm.left;
-                        op = mm.op;
-                        right = mm.right;
-                        l = m.n;
-                        r = mm.r;
-                        n = mm.n;
-                      }
-                  else if Some m.name = mm.right then
-                    Array.set monkeys i
-                      {
-                        name = mm.name;
-                        left = mm.left;
-                        op = mm.op;
-                        right = mm.right;
-                        l = mm.l;
-                        r = m.n;
-                        n = mm.n;
-                      })
-                monkeys
-            in
-            Array.iteri
-              (fun i mm ->
-                match (mm.l, mm.op, mm.r) with
-                | Some x, Some `Add, Some y ->
-                    Array.set monkeys i
-                      {
-                        name = mm.name;
-                        left = mm.left;
-                        op = mm.op;
-                        right = mm.right;
-                        l = mm.l;
-                        r = mm.r;
-                        n = Some (x + y);
-                      }
-                | Some x, Some `Subtract, Some y ->
-                    Array.set monkeys i
-                      {
-                        name = mm.name;
-                        left = mm.left;
-                        op = mm.op;
-                        right = mm.right;
-                        l = mm.l;
-                        r = mm.r;
-                        n = Some (x - y);
-                      }
-                | Some x, Some `Multiply, Some y ->
-                    Array.set monkeys i
-                      {
-                        name = mm.name;
-                        left = mm.left;
-                        op = mm.op;
-                        right = mm.right;
-                        l = mm.l;
-                        r = mm.r;
-                        n = Some (x * y);
-                      }
-                | Some x, Some `Divide, Some y ->
-                    Array.set monkeys i
-                      {
-                        name = mm.name;
-                        left = mm.left;
-                        op = mm.op;
-                        right = mm.right;
-                        l = mm.l;
-                        r = mm.r;
-                        n = Some (x / y);
-                      }
-                | _, _, _ -> ())
-              monkeys
-        | None -> ())
-      monkeys
-  in
-  let index = find_name monkeys "root" 0 in
-  if monkeys.(index).n = None then subsitute monkeys else monkeys.(index)
+let mytree = create_tree input_map "root"
 
-let m = subsitute monkeys
+let rec print n = function
+  | Leaf -> flush stdout
+  | Node { value; left; right } ->
+      let () = Printf.printf "%2i: %s %i\n" n value.name value.n in
+      let () = print (n + 1) left in
+      print (n + 1) right
 
-let () =
-  Printf.printf "root monkey %i + %i = %i\n" (get_int m.l) (get_int m.r)
-    (get_int m.n)
+let () = print 0 mytree
+let () = Printf.printf "total = %i\n" (calculate mytree)
 
-let () = flush stdout
-
-(* let () = Array.iteri ( fun i m -> Printf.printf "%s: %s () %s aka %i () %i = %i\n" m.name (get_string m.left) (get_string m.right) (get_int m.l) (get_int m.r) (get_int m.n) ) monkeys*)
-
-let rec guess low high =
-  let n = (high + low) / 2 in
-  let monkeys = Array.of_list read_file in
-  let index = find_name monkeys "humn" 0 in
-  let humn = Array.get monkeys index in
-  let () =
-    Array.set monkeys index
-      {
-        name = humn.name;
-        left = humn.left;
-        op = humn.op;
-        right = humn.right;
-        l = humn.l;
-        r = humn.r;
-        n = Some n;
-      }
-  in
-  let m = subsitute monkeys in
-  let () =
-    Printf.printf "guessing %i results in root monkey %i == %i = %i\n" n
-      (get_int m.l) (get_int m.r) (get_int m.n)
-  in
+let rec guess map low high =
+  let delta = high - low in
+  let n = low + (delta / 2) in
+  let map = Data.add "humn" [ string_of_int n ] map in
+  let mytree = create_tree map "root" in
+  let m = calculate mytree in
+  let () = Printf.printf "guessing %i (%i %i) results in root monkey %i\n" n low high m in
   let () = flush stdout in
-  if get_int m.l = get_int m.r then n
-  else if get_int m.l < get_int m.r then guess low (low + ((high - low) / 2))
-  else guess (high - ((high - low) / 2)) high
+  if m = 0 then n else if m < 0 then guess map low (low + (delta / 2)) else guess map (high - (delta / 2)) high
 
-let _ = guess 0 1_000_000_000_000_000
+let root = Data.find "root" input_map
+let new_root = [ List.nth root 0; "-"; List.nth root 2 ]
+let input_map = Data.add "root" new_root input_map
+let _ = guess input_map 0 1_000_000_000_000_000
